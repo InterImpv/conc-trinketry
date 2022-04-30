@@ -137,7 +137,6 @@ void print_instr(instr_t *instr)
 		printf("\tinvalid\n");
 		break;
 	};
-	//printf("\n\n");
 }
 
 instr_t *instr_create(void)
@@ -147,6 +146,14 @@ instr_t *instr_create(void)
 	assert(NULL != instr);
 
 	return instr;
+}
+
+enum GEN_ERR instr_free(instr_t *instr)
+{
+    assert(NULL != instr);
+    free(instr);
+
+    return E_OK;
 }
 
 void instr_dec_fill(instr_t *instr, uint16_t data)
@@ -159,7 +166,6 @@ void instr_dec_fill(instr_t *instr, uint16_t data)
 	uint16_t imm = 0;
 
 	enum RISC16 opcode = (data & OP_MASK) >> 13;
-	//printf(">%04x<\n", data);
 
 	switch (opcode)
 	{
@@ -189,8 +195,6 @@ void instr_dec_fill(instr_t *instr, uint16_t data)
 	instr->rB = rB;
 	instr->rC = rC;
 	instr->imm = imm;
-
-	//print_instr(instr);
 
 	return;
 }
@@ -247,12 +251,4 @@ const uint16_t instr_fetch(mem_unit *mem, reg_unit *regs)
 	data = mem->rom[regs->pc];
 
 	return data;
-}
-
-enum GEN_ERR instr_free(instr_t *instr)
-{
-    assert(NULL != instr);
-    free(instr);
-
-    return E_OK;
 }
