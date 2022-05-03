@@ -2,6 +2,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include <ncurses.h>
 
 const uint16_t OP_MASK = 0xe000;
 const uint16_t RA_MASK = 0x1c00;
@@ -42,7 +45,7 @@ static void __nand(reg_unit *regs, instr_t *instr)
 static void __lui(reg_unit *regs, instr_t *instr)
 {
 	if (instr->rA)
-		regs->rx[instr->rA] |= (instr->imm << 6) & LUI_MASK;
+		regs->rx[instr->rA] = (instr->imm << 6) & LUI_MASK;
 
 	inc_pc(regs);
 	return;
@@ -50,7 +53,7 @@ static void __lui(reg_unit *regs, instr_t *instr)
 
 static void __sw(reg_unit *regs, mem_unit *mem, instr_t *instr)
 {
-	mem->ram_ptr = (instr->imm + regs->rx[instr->rB]) & IM7_MASK;
+	mem->ram_ptr = (instr->imm + regs->rx[instr->rB]);
 	mem->ram[mem->ram_ptr] = regs->rx[instr->rA];
 
 	inc_pc(regs);
@@ -59,7 +62,7 @@ static void __sw(reg_unit *regs, mem_unit *mem, instr_t *instr)
 
 static void __lw(reg_unit *regs, mem_unit *mem, instr_t *instr)
 {
-	mem->ram_ptr = (instr->imm + regs->rx[instr->rB]) & IM7_MASK;
+	mem->ram_ptr = (instr->imm + regs->rx[instr->rB]);
 	regs->rx[instr->rA] = mem->ram[mem->ram_ptr];
 
 	inc_pc(regs);
@@ -78,10 +81,13 @@ static void __beq(reg_unit *regs, instr_t *instr)
 
 static void __jalr(reg_unit *regs, instr_t *instr)
 {
-	if (instr->rA)
-		regs->rx[instr->rA] = regs->pc + 1;
+	/* in case if rA == rB */
+	uint16_t addr = regs->pc + 1;
 
 	set_pc(regs, regs->rx[instr->rB]);
+	if (instr->rA)
+		regs->rx[instr->rA] = addr;
+
 	return;
 }
 
@@ -111,34 +117,6 @@ static const char *__op2str(enum RISC16 opcode)
 	};
 }
 
-void print_instr(instr_t *instr)
-{
-	assert(NULL != instr);
-
-	printf("\n\tINSTRUCTION:\n");
-	switch (instr->opcode)
-	{
-	case __ADD:
-	case __NAND:
-		printf("%s\t$r%d, $r%d, $r%d\n", __op2str(instr->opcode), instr->rA, instr->rB, instr->rC);
-		break;
-	case __ADDI:
-	case __SW:
-	case __LW:
-	case __BEQ:
-	case __JALR:
-		printf("%s\t$r%d, $r%d, %u\n", __op2str(instr->opcode), instr->rA, instr->rB, instr->imm);
-		break;
-	case __LUI:
-		printf("%s\t$r%d, %u\n", __op2str(instr->opcode), instr->rA, instr->imm);
-		break;
-
-	default:
-		printf("\tinvalid\n");
-		break;
-	};
-}
-
 instr_t *instr_create(void)
 {
 	instr_t *instr = NULL;
@@ -156,9 +134,56 @@ enum GEN_ERR instr_free(instr_t *instr)
     return E_OK;
 }
 
-void instr_dec_fill(instr_t *instr, uint16_t data)
+void draw_instr(instr_t *instr)
 {
 	assert(NULL != instr);
+
+	mvprintw(Y_INSTR, X_INSTR, "INSTRUCTION: 0x%04x", instr->raw_data);
+	switch (instr->opcode)
+	{
+	case __ADD:
+	case __NAND:
+		mvprintw(Y_INSTR + 1, X_INSTR, "%s $r%d, $r%d, $r%d",
+			__op2str(instr->opcode), instr->rA, instr->rB, instr->rC);
+		break;
+	case __ADDI:
+	case __SW:
+	case __LW:
+	case __BEQ:
+	case __JALR:
+		mvprintw(Y_INSTR + 1, X_INSTR, "%s $r%d, $r%d, %u",
+			__op2str(instr->opcode), instr->rA, instr->rB, instr->imm);
+		break;
+	case __LUI:
+		mvprintw(Y_INSTR + 1, X_INSTR, "%s $r%d, %u",
+			__op2str(instr->opcode), instr->rA, instr->imm);
+		break;
+
+	default:
+		mvprintw(Y_INSTR + 1, X_INSTR, "invalid");
+		break;
+	};
+}
+
+const uint16_t instr_fetch(mem_unit *mem, reg_unit *regs)
+{
+	uint16_t data = 0x0000;
+	assert(NULL != mem);
+	assert(NULL != regs);
+
+	if (regs->pc >= ROM_CAPACITY)
+		return data;
+
+	data = mem->rom[regs->pc];
+	mem->rom_ptr = regs->pc;
+
+	return data;
+}
+
+enum GEN_ERR instr_decode(instr_t *instr, uint16_t data)
+{
+	assert(NULL != instr);
+	enum GEN_ERR ret = E_OK;
 
 	uint8_t rA = 0;
 	uint8_t rB = 0;
@@ -188,6 +213,10 @@ void instr_dec_fill(instr_t *instr, uint16_t data)
 		rA = (data & RA_MASK) >> 10;
 		imm = data & IM10_MASK;
 		break;
+
+	default:	/* nop */
+		ret = E_ARG;
+		break;
 	};
 
 	instr->opcode = opcode;
@@ -195,8 +224,9 @@ void instr_dec_fill(instr_t *instr, uint16_t data)
 	instr->rB = rB;
 	instr->rC = rC;
 	instr->imm = imm;
+	instr->raw_data = data;
 
-	return;
+	return ret;
 }
 
 enum GEN_ERR instr_exec(instr_t *instr, reg_unit *regs, mem_unit *mem)
@@ -237,18 +267,4 @@ enum GEN_ERR instr_exec(instr_t *instr, reg_unit *regs, mem_unit *mem)
 	};
 
 	return ret;
-}
-
-const uint16_t instr_fetch(mem_unit *mem, reg_unit *regs)
-{
-	uint16_t data = -1;
-	assert(NULL != mem);
-	assert(NULL != regs);
-
-	if (regs->pc >= MEM_SIZE)
-		return data;
-
-	data = mem->rom[regs->pc];
-
-	return data;
 }

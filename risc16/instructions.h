@@ -18,15 +18,16 @@ typedef struct __instr {
 	uint8_t rB;
 	uint8_t rC;
 	uint16_t imm;
+	uint16_t raw_data;
 } instr_t;
 
 /* instruction functions */
 instr_t *instr_create(void);
 enum GEN_ERR instr_free(instr_t *instr);
 
-void instr_dec_fill(instr_t *instr, uint16_t data);
-enum GEN_ERR instr_exec(instr_t *instr, reg_unit *regs, mem_unit *mem);
 const uint16_t instr_fetch(mem_unit *mem, reg_unit *regs);
+enum GEN_ERR instr_decode(instr_t *instr, uint16_t data);
+enum GEN_ERR instr_exec(instr_t *instr, reg_unit *regs, mem_unit *mem);
 
-void print_instr(instr_t *instr);
+void draw_instr(instr_t *instr);
 
