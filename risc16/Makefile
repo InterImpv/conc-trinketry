@@ -1,11 +1,10 @@
 CC := gcc
 CFLAGS := -Wall -std=gnu2x -lncurses
-DEPS := instructions.h modules.h
-OBJS := main.o instructions.o modules.o
+DEPS := modules.h
+OBJS := main.o modules.o
 
 PROJ_NAME := main
 ROM_NAME := hello
-RAM_NAME := helloram
 
 all: build
 
@@ -21,10 +20,10 @@ $(PROJ_NAME): $(OBJS)
 
 asmc:
 	assembler/assembler asm/$(ROM_NAME).asm asm/$(ROM_NAME).o
-	assembler/assembler asm/$(RAM_NAME).asm asm/$(RAM_NAME).o
 
 clean:
-	rm -f $(OBJS)
+	rm -f *.o
+	rm -f asm/*.o
 	rm -f $(PROJ_NAME)
 
 

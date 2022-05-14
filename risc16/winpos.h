@@ -2,7 +2,7 @@
 #define X_ROM 0
 #define Y_ROM 0
 
-#define X_RAM 18
+#define X_RAM 20
 #define Y_RAM 0
 
 #define X_REGS 40
@@ -13,3 +13,6 @@
 
 #define X_STDOUT 40
 #define Y_STDOUT 12
+
+#define X_SCANIN 40
+#define Y_SCANIN 23
