@@ -15,4 +15,4 @@
 #define Y_STDOUT 12
 
 #define X_SCANIN 40
-#define Y_SCANIN 23
+#define Y_SCANIN 22

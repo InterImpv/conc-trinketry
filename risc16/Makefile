@@ -1,7 +1,7 @@
 CC := gcc
 CFLAGS := -Wall -std=gnu2x -lncurses
-DEPS := modules.h
-OBJS := main.o modules.o
+DEPS := modules.h cmdi.h
+OBJS := main.o modules.o cmdi.o
 
 PROJ_NAME := main
 ROM_NAME := hello

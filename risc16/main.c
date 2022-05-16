@@ -1,5 +1,4 @@
-//#include "instructions.h"
-#include "modules.h"
+#include "cmdi.h"
 #include "winpos.h"
 
 #include <stdio.h>
@@ -7,8 +6,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <ncurses.h>
-
-#define IO_BUF_SIZE 33
 
 /* MAIN */
 int main(int argc, char **argv)
@@ -19,7 +16,9 @@ int main(int argc, char **argv)
 		goto dealloc_mems;
 	}
 	mem_reset(memory);
-	mem_fill(memory, "asm/hello.o");
+	if (mem_fill(memory, "asm/hello.o") == E_IO) {
+		goto dealloc_mems;
+	}
 
 	reg_unit *registers = reg_create();
 	if (registers == NULL) {
@@ -35,17 +34,24 @@ int main(int argc, char **argv)
 	}
 	instr_decode(instruction, 0x0000);
 
+	cmd_t *cmdunit = cmd_create();
+	if (instruction == NULL) {
+		fprintf(stderr, "ERR %d: no memory available\n", -E_INIT);
+		goto dealloc_cmd;
+	}
+	cmd_init(cmdunit, registers, memory);
+
 	/* "Upon successful completion, initscr() returns a pointer to
 	 * stdscr. Otherwise, it does not return." */
 	if (initscr() == NULL) {
 		fprintf(stderr, "ERR %d: curses init fail\n", -E_INIT);
-		goto dealloc_instr;
+		goto dealloc_cmd;
 	}
 	noecho();
 	curs_set(FALSE);
+	keypad(stdscr, TRUE);
 
 	uint32_t key = '.';
-	char io_buf[IO_BUF_SIZE] = "";
 	do {
 		/* get input */
 		switch (key)
@@ -65,15 +71,8 @@ int main(int argc, char **argv)
 		case 'r':
 			reg_reset(registers);
 			break;
-		case 'i':		// sometimes invalid ptr error happens, dunno
-			echo();
-			curs_set(TRUE);
-
-			mvaddch(Y_SCANIN, X_SCANIN - 1, '>');
-			mvgetnstr(Y_SCANIN, X_SCANIN, io_buf, IO_BUF_SIZE - 1);
-
-			curs_set(FALSE);
-			noecho();
+		case '\n':
+			cmd_getline(cmdunit);
 			break;
 		case '.':
 			instr_decode(instruction, instr_fetch(memory, registers));
@@ -88,11 +87,13 @@ int main(int argc, char **argv)
 		draw_regs(registers);
 		draw_instr(instruction);
 		draw_stdout(memory);
-		/* io */
-		mvprintw(Y_SCANIN - 1, X_SCANIN, "%s", io_buf);
+		draw_cmdiobuf(cmdunit);
 		refresh();
 	} while ((key = getch()) != 'x');
 	endwin();
+
+dealloc_cmd:
+	cmd_free(cmdunit);
 
 dealloc_instr:
 	instr_free(instruction);

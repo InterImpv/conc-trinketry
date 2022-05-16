@@ -7,13 +7,6 @@
 #include <string.h>
 #include <ncurses.h>
 
-const uint32_t ROM_START	= 0x0000;
-const uint32_t ROM_END		= 0x0100;
-const uint32_t RAM_START	= 0x0100;
-const uint32_t RAM_END		= 0xffff;
-const uint32_t STDOUT_START	= 0x0100;
-const uint32_t STDOUT_END	= 0x01ff;
-
 static const uint32_t STDOUT_W		= 32;
 static const uint32_t STDOUT_H		= 8;
 
@@ -357,9 +350,9 @@ enum GEN_ERR mem_reset(mem_unit *mem)
 	mem->rom_ptr = 0;
 	mem->ram_ptr = 0;
 	mem->rom_beginp = ROM_START;
-	mem->rom_endp = ROM_START + 23;
+	mem->rom_endp = ROM_START + VIEW_MEM_RANGE;
 	mem->ram_beginp = RAM_START;
-	mem->ram_endp = RAM_START + 23;
+	mem->ram_endp = RAM_START + VIEW_MEM_RANGE;
 	memset(mem->mem, 0, MEM_CAPACITY * sizeof(*mem->mem));
     return E_OK;
 }
@@ -448,48 +441,6 @@ static void rectangle(uint32_t y1, uint32_t x1, uint32_t y2, uint32_t x2)
     mvaddch(y2, x2, '+');
 }
 
-/*static enum GEN_ERR draw_rom(mem_unit *mem)
-{
-	if (NULL == mem)
-		return E_ARG;
-
-	mvprintw(Y_ROM, X_ROM, "0x%04x 0x%04x", mem->rom_beginp, mem->rom_endp);
-	uint32_t i, j;
-	for (i = mem->rom_beginp, j = 1; i < mem->rom_endp; i++, j++) {
-		if (i == mem->rom_ptr) {
-			attron(A_BOLD);
-			mvprintw(Y_ROM + j, X_ROM, "[0x%04x]: 0x%04x<",
-				i, mem->mem[i]);
-			attroff(A_BOLD);
-		} else {
-			mvprintw(Y_ROM + j, X_ROM, "[0x%04x]: 0x%04x",
-				i, mem->mem[i]);
-		}
-	}
-	return E_OK;
-}
-
-static enum GEN_ERR draw_ram(mem_unit *mem)
-{
-	if (NULL == mem)
-		return E_ARG;
-
-	mvprintw(Y_RAM, X_RAM, "0x%04x 0x%04x", mem->ram_beginp, mem->ram_endp);
-	uint32_t i, j;
-	for (i = mem->ram_beginp, j = 1; i < mem->ram_endp; i++, j++) {
-		if (i == mem->ram_ptr) {
-			attron(A_BOLD);
-			mvprintw(Y_RAM + j, X_RAM, "[0x%04x]: 0x%04x< %c",
-				i, mem->mem[i], mem->mem[i]);
-			attroff(A_BOLD);
-		} else {
-			mvprintw(Y_RAM + j, X_RAM, "[0x%04x]: 0x%04x %c",
-				i, mem->mem[i], mem->mem[i]);
-		}
-	}
-	return E_OK;
-}*/
-
 static enum GEN_ERR draw_memseg(mem_unit *mem, uint32_t xpos, uint32_t ypos, uint16_t start, uint16_t end, uint16_t pos)
 {
 	if (NULL == mem)
@@ -497,7 +448,7 @@ static enum GEN_ERR draw_memseg(mem_unit *mem, uint32_t xpos, uint32_t ypos, uin
 
 	mvprintw(ypos, xpos, "@: 0x%04x 0x%04x", start, end);
 	uint32_t i, j;
-	for (i = start, j = 1; i < end; i++, j++) {
+	for (i = start, j = 1; i <= end; i++, j++) {
 		if (i == pos)
 			attron(A_BOLD);
 
@@ -518,8 +469,6 @@ enum GEN_ERR draw_mem(mem_unit *mem)
 	if (NULL == mem)
 		return E_ARG;
 
-	//draw_rom(mem);
-	//draw_ram(mem);
 	draw_memseg(mem, X_ROM, Y_ROM, mem->rom_beginp, mem->rom_endp, mem->rom_ptr);
 	draw_memseg(mem, X_RAM, Y_RAM, mem->ram_beginp, mem->ram_endp, mem->ram_ptr);
 	return E_OK;
