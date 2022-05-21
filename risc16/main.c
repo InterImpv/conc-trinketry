@@ -39,7 +39,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "ERR %d: no memory available\n", -E_INIT);
 		goto dealloc_cmd;
 	}
-	cmd_init(cmdunit, registers, memory);
+	cmd_init(cmdunit, registers, memory, instruction);
 
 	/* "Upon successful completion, initscr() returns a pointer to
 	 * stdscr. Otherwise, it does not return." */
@@ -73,10 +73,11 @@ int main(int argc, char **argv)
 			break;
 		case '\n':
 			cmd_getline(cmdunit);
+			cmd_parseline(cmdunit);
 			break;
 		case '.':
-			instr_decode(instruction, instr_fetch(memory, registers));
-			instr_exec(instruction, registers, memory);
+			cmd_fetchdecode(cmdunit);
+			cmd_execute(cmdunit);
 			break;
 		};
 
