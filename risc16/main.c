@@ -54,8 +54,7 @@ int main(int argc, char **argv)
 	uint32_t key = '.';
 	do {
 		/* get input */
-		switch (key)
-		{
+		switch (key) {
 		case 'q':
 			dec_rom_ptr(memory);
 			break;
@@ -107,4 +106,3 @@ dealloc_mems:
 
 	return 0;
 }
-

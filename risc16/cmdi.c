@@ -58,14 +58,13 @@ cmd_t *cmd_create(void)
 
 enum GEN_ERR cmd_free(cmd_t *cmd)
 {
-    if (NULL == cmd)
+	if (NULL == cmd)
 		return E_ARG;
-
 	if (NULL != cmd->cmds)
 		free(cmd->cmds);
 
-    free(cmd);
-    return E_OK;
+	free(cmd);
+	return E_OK;
 }
 
 /* set inner buffers to '\0' */
@@ -84,7 +83,7 @@ static void cmd_flushbufs(cmd_t *cmd)
 
 enum GEN_ERR cmd_init(cmd_t *cmd, reg_unit *regs, mem_unit *mem, instr_t *instr)
 {
-    if (NULL == cmd || NULL == regs || NULL == mem || NULL == instr)
+	if (NULL == cmd || NULL == regs || NULL == mem || NULL == instr)
 		return E_ARG;
 
 	cmd->addr = 0;
@@ -95,22 +94,23 @@ enum GEN_ERR cmd_init(cmd_t *cmd, reg_unit *regs, mem_unit *mem, instr_t *instr)
 
 	cmd_flushbufs(cmd);
 	strncpy(cmd->cmds[0], SH_NAME, strlen(SH_NAME));
-
-    return E_OK;
+	return E_OK;
 }
 
 /* unsafe functions begin */
 static void cmd_jmptomem(cmd_t *cmd)
 {
 	if (cmd->addr >= ROM_START && cmd->addr < ROM_END) {
-		uint16_t addr_end = clamp_ui16(cmd->addr, ROM_START + VIEW_MEM_RANGE, ROM_END);
+		uint16_t addr_end = clamp_ui16(
+			cmd->addr, ROM_START + VIEW_MEM_RANGE, ROM_END);
 		uint16_t addr_begin = addr_end - VIEW_MEM_RANGE;
 
 		cmd->mem->rom_endp = addr_end;
 		cmd->mem->rom_beginp = addr_begin;
 	}
-	if (cmd->addr >= RAM_START && cmd->addr <= RAM_END) {	// !
-		uint16_t addr_end = clamp_ui16(cmd->addr, RAM_START + VIEW_MEM_RANGE, RAM_END);
+	if (cmd->addr >= RAM_START && cmd->addr <= RAM_END) { // !
+		uint16_t addr_end = clamp_ui16(
+			cmd->addr, RAM_START + VIEW_MEM_RANGE, RAM_END);
 		uint16_t addr_begin = addr_end - VIEW_MEM_RANGE;
 
 		cmd->mem->ram_endp = addr_end;
@@ -124,7 +124,7 @@ static void cmd_pokemem(cmd_t *cmd)
 	if (cmd->addr >= ROM_START && cmd->addr < ROM_END) {
 		cmd->mem->mem[cmd->addr] = cmd->data;
 	}
-	if (cmd->addr >= RAM_START && cmd->addr <= RAM_END) {	// !
+	if (cmd->addr >= RAM_START && cmd->addr <= RAM_END) { // !
 		cmd->mem->mem[cmd->addr] = cmd->data;
 	}
 	return;
@@ -154,12 +154,10 @@ static void cmd_puterr(cmd_t *cmd, const char *msg)
 
 static void cmd_setarg(cmd_t *cmd, const char *addr, const char *data)
 {
-	if (NULL != addr) {
+	if (NULL != addr)
 		cmd->addr = strtol(addr, NULL, 16);
-	}
-	if (NULL != data) {
+	if (NULL != data)
 		cmd->data = strtol(data, NULL, 16);
-	}
 }
 
 void cmd_fetchdecode(cmd_t *cmd)
@@ -174,11 +172,10 @@ void cmd_execute(cmd_t *cmd)
 
 static error_t cmd_parseopt(int key, char *arg, struct argp_state *state)
 {
-    cmd_t *cmd = state->input;
+	cmd_t *cmd = state->input;
 
-    switch (key)
-    {
-    case 'j':	// jump
+	switch (key) {
+	case 'j': // jump
 		if (cmd->cmdc != 3) {
 			cmd_puterr(cmd, ERR_ARN);
 			break;
@@ -186,9 +183,9 @@ static error_t cmd_parseopt(int key, char *arg, struct argp_state *state)
 		// i don't care about errors right now
 		cmd_setarg(cmd, arg, NULL);
 		cmd_jmptomem(cmd);
-        break;
+		break;
 
-    case 'p':	// poke
+	case 'p': // poke
 		size_t size_arg = strlen(arg);
 		char cpybuf[IOBUF_SIZE];
 		if (cmd->cmdc != 3) {
@@ -205,9 +202,9 @@ static error_t cmd_parseopt(int key, char *arg, struct argp_state *state)
 		cmd_setarg(cmd, args[0], args[1]);
 		cmd_pokemem(cmd);
 		free(args);
-        break;
+		break;
 
-    case 'c':	// set pc
+	case 'c': // set pc
 		if (cmd->cmdc != 3) {
 			cmd_puterr(cmd, ERR_ARN);
 			break;
@@ -215,9 +212,9 @@ static error_t cmd_parseopt(int key, char *arg, struct argp_state *state)
 		// i don't care about errors right now
 		cmd_setarg(cmd, arg, NULL);
 		cmd_setpc(cmd);
-        break;
+		break;
 
-    case 's':	// execute n ticks
+	case 's': // execute n ticks
 		if (cmd->cmdc != 3) {
 			cmd_puterr(cmd, ERR_ARN);
 			break;
@@ -225,18 +222,18 @@ static error_t cmd_parseopt(int key, char *arg, struct argp_state *state)
 		// i don't care about errors right now
 		cmd_setarg(cmd, NULL, arg);
 		cmd_exenticks(cmd);
-        break;
+		break;
 
-    default:
-        return ARGP_ERR_UNKNOWN;
-        break;
-    };
-    return E_OK;
+	default:
+		return ARGP_ERR_UNKNOWN;
+		break;
+	};
+	return E_OK;
 }
 
 enum GEN_ERR cmd_getline(cmd_t *cmd)
 {
-    if (NULL == cmd)
+	if (NULL == cmd)
 		return E_ARG;
 
 	cmd_flushbufs(cmd);
@@ -252,14 +249,13 @@ enum GEN_ERR cmd_getline(cmd_t *cmd)
 	curs_set(FALSE);
 	noecho();
 	/* echo guard end */
-    return E_OK;
+	return E_OK;
 }
 
 enum GEN_ERR cmd_parseline(cmd_t *cmd)
 {
 	char cpybuf[IOBUF_SIZE];
 	const char *delim = " ";
-
 	/* specific split */
 	strncpy(cpybuf, cmd->iobuf, IOBUF_SIZE - 1);
 	char *ptr = strtok(cpybuf, delim);
@@ -269,30 +265,27 @@ enum GEN_ERR cmd_parseline(cmd_t *cmd)
 		cmd->cmdc++;
 	}
 
-	struct argp_option options[] = {
-		/* move to specific address */
-		{ "jump", 'j', "ADDR", 0, "0" },
-		/* overwrite value in memory */
-		{ "poke", 'p', "ADDR DATA", 0, "1" },
-		/* set program counter */
-		{ "pcset", 'c', "ADDR", 0, "2" },
-		/* execute N ticks */
-		{ "exes", 's', "TICKS", 0, "3" },
-		/* execute until pc != ADDR */
-		//{ "exet", 0, "ADDR", 0, "4" },
-		{ 0 }
+	struct argp_option options[] = { /* move to specific address */
+					 { "jump", 'j', "ADDR", 0, "0" },
+					 /* overwrite value in memory */
+					 { "poke", 'p', "ADDR DATA", 0, "1" },
+					 /* set program counter */
+					 { "pcset", 'c', "ADDR", 0, "2" },
+					 /* execute N ticks */
+					 { "exes", 's', "TICKS", 0, "3" },
+					 /* execute until pc != ADDR */
+					 //{ "exet", 0, "ADDR", 0, "4" },
+					 { 0 }
 	};
-	struct argp argp_struct = {
-		options, cmd_parseopt, 0, 0
-	};
+	struct argp argp_struct = { options, cmd_parseopt, 0, 0 };
 	argp_parse(&argp_struct, cmd->cmdc, cmd->cmds, ARGP_SILENT, 0, cmd);
 
-    return E_OK;
+	return E_OK;
 }
 
 enum GEN_ERR draw_cmdiobuf(cmd_t *cmd)
 {
-    if (NULL == cmd)
+	if (NULL == cmd)
 		return E_ARG;
 
 	mvprintw(Y_SCANIN - 1, X_SCANIN, "%s", cmd->iobuf);
@@ -300,6 +293,5 @@ enum GEN_ERR draw_cmdiobuf(cmd_t *cmd)
 	mvprintw(5, 60, "a: 0x%04x", cmd->addr);
 	mvprintw(6, 60, "d: 0x%04x", cmd->data);
 	/* DELETE LATER end */
-
-    return E_OK;
+	return E_OK;
 }

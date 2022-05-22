@@ -1,3 +1,6 @@
+# Formatter
+.clang-format
+
 # Prerequisites
 *.d
 

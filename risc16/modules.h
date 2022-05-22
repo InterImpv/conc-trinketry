@@ -2,16 +2,16 @@
 
 #include <stdint.h>
 
-#define N_OF_REGS		8
-#define MEM_CAPACITY	65536
-#define VIEW_MEM_RANGE	22
+#define N_OF_REGS 		8
+#define MEM_CAPACITY 	65536
+#define VIEW_MEM_RANGE 	22
 
-#define ROM_START		0x0000
-#define ROM_END			0x0100
+#define ROM_START 		0x0000
+#define ROM_END 		0x0100
 #define RAM_START		0x0100
 #define RAM_END			0xffff
 #define STDOUT_START	0x0100
-#define STDOUT_END		0x01ff
+#define STDOUT_END 		0x01ff
 
 typedef struct __mem_unit {
 	uint16_t rom_ptr;
@@ -31,14 +31,14 @@ typedef struct __reg_unit {
 } reg_unit;
 
 enum RISC16 {
-    __ADD	= 0,
-    __ADDI	= 1,
-    __NAND	= 2,
-    __LUI	= 3,
-    __SW	= 4,
-    __LW	= 5,
-    __BEQ	= 6,
-    __JALR	= 7
+	__ADD =		0,
+	__ADDI =	1,
+	__NAND =	2,
+	__LUI =		3,
+	__SW =		4,
+	__LW =		5,
+	__BEQ =		6,
+	__JALR =	7
 };
 
 /* instruction type */
