@@ -1,33 +1,99 @@
 #include "modules.h"
 
-#include <stddef.h>
+#include <cstdint>
+#include <list>
 
 #define IOBUF_SIZE 33
-#define IOBUF_AMOUNT 4
 
-typedef struct __cmd {
-	uint16_t addr;
-	uint16_t data;
+enum RISC16 {
+	__ADD	= 0,
+	__ADDI	= 1,
+	__NAND	= 2,
+	__LUI	= 3,
+	__SW	= 4,
+	__LW	= 5,
+	__BEQ	= 6,
+	__JALR	= 7
+};
 
-	char iobuf[IOBUF_SIZE];
-	char **cmds;
-	size_t cmdc;
+enum CTRL_CMD {
+	CMD_JMPTOMEM = 0,
+	CMD_POKEMEM = 1
+};
 
-	reg_unit *regs;
-	mem_unit *mem;
-	instr_t *instr;
-} cmd_t;
+class instr_t {
+private:
+	const char *__op2str(enum RISC16 opcode);
 
-char **strsplit(char *str, const char *delim, size_t *size);
+public:
+	enum RISC16 opcode;
+	uint8_t rA;
+	uint8_t rB;
+	uint8_t rC;
+	uint16_t imm;
+	uint16_t raw_data;
 
-cmd_t *cmd_create(void);
-enum GEN_ERR cmd_free(cmd_t *cmd);
+	instr_t(void) = default;
+	~instr_t(void) = default;
 
-enum GEN_ERR cmd_init(cmd_t *cmd, reg_unit *regs, mem_unit *mem,
-		      instr_t *instr);
-enum GEN_ERR cmd_getline(cmd_t *cmd);
-enum GEN_ERR cmd_parseline(cmd_t *cmd);
-enum GEN_ERR draw_cmdiobuf(cmd_t *cmd);
+	enum GEN_ERR decode(const uint16_t data);
+	void draw(const uint32_t ypos, const uint32_t xpos);
+};
 
-void cmd_fetchdecode(cmd_t *cmd);
-void cmd_execute(cmd_t *cmd);
+class ctrl_unit {
+private:
+	/* private members BEGIN */
+	enum CTRL_CMD command;
+	uint16_t arg_addr;
+	uint16_t arg_data;
+
+	uint16_t raw_data;
+
+	std::size_t xscr_size;
+	std::size_t yscr_size;
+
+	std::string iobuf;
+
+	mem_unit *mem = nullptr;
+	reg_unit *reg = nullptr;
+	instr_t instr;
+
+	std::list<uint16_t> bpoints;
+	/* private members END */
+	/* private functions BEGIN */
+	void __add(void);
+	void __addi(void);
+	void __nand(void);
+	void __lui(void);
+	void __sw(void);
+	void __lw(void);
+	void __beq(void);
+	void __jalr(void);
+
+	void flush_iobuf(void);
+	enum GEN_ERR set_argaddr_from_str(const std::string str);
+	enum GEN_ERR set_argdata_from_str(const std::string str);
+	void cmd_jumptomem(void);
+	void cmd_pokemem(void);
+	void cmd_setpc(void);
+	void cmd_exenticks(void);
+	void cmd_addbreak(void);
+	void cmd_delbreak(void);
+	/* private functions END */
+public:
+	ctrl_unit(void) = default;
+	~ctrl_unit(void) = default;
+
+	enum GEN_ERR set_mem(mem_unit *mem);
+	enum GEN_ERR set_reg(reg_unit *reg);
+	void cmd_exetobreak(void);
+
+	enum GEN_ERR fetch(void);
+	enum GEN_ERR decode(void);
+	enum GEN_ERR execute(void);
+
+	enum GEN_ERR getline(void);
+	enum GEN_ERR parseio(void);
+
+	void draw(void);
+};

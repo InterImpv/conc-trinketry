@@ -1,6 +1,6 @@
-CC := gcc
-CFLAGS := -Wall -std=gnu2x -lncurses
-DEPS := modules.h cmdi.h
+CC := g++
+CFLAGS := -Wall -std=c++2a -lncurses
+DEPS := modules.h cmdi.h winpos.h gen-err.h
 OBJS := main.o modules.o cmdi.o
 
 PROJ_NAME := main
@@ -15,7 +15,7 @@ build: $(PROJ_NAME)
 $(PROJ_NAME): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
-%.o: %.c $(DEPS)
+%.o: %.cpp $(DEPS)
 	$(CC) $(CFLAGS) -c $<
 
 asmc:

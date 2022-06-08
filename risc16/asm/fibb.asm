@@ -1,28 +1,47 @@
-start:	add r1, r0, r0		# int16 *arr = 0x0000
-		addi r1, r1, 0		#
-		add r2, r0, r0		# int16 n = 16
-		addi r2, r2, 16		#
+# STARTUP
+__rst:		movi r6, __SP
+		lw r6, r6, 0
+		movi r7, main
+		jalr r7, r7
 
-		add r3, r0, r0		# int16 term1 = 0
-		add r4, r0, r0		# int16 term2 = 0
-		add r5, r0, r0		# int16 i = 0
+__SP:		.fill 0x7fff
 
-		addi r3, r3, 0		# term1 = 0
-		addi r4, r4, 1		# term2 = 1
-		sw r4, r1, 0		# *arr = term2
+# DATA
+# array address
+arr:	.fill 0x3000
+size:	.fill 16
 
-		addi r1, r1, 1		# arr++
+main:	movi r1, arr		# int16 *arr = 0x0000
+	lw r1, r1, 0
+	movi r2, size		# int16 n = 16
+	lw r2, r2, 0
 
-loop:	beq r5, r2, end		# while(i != n) {
+	movi r3, 1		# t1 = 1
+	movi r4, 1		# t2 = 1
 
-		add r4, r4, r3		# term2 = term2 + term1
+	sw r3, r1, 0		# arr[0] = t1
+	addi r1, r1, 1		# arr++
 
-		sw r4, r1, 0		# *arr = term2
-		lw r3, r1, -1		# term1 = *(--arr)
+	sw r4, r1, 0		# arr[1] = t2
+	addi r1, r1, 1		# arr++
 
-		addi r1, r1, 1		# arr++
-		addi r5, r5, 1		# i++
+loop:	beq r2, r0, end		# while (size != 0) {
 
-		beq r0, r0, loop	# }
+	add r5, r3, r4		# next = t1 + t2
+	sw r5, r1, 0		# arr[i] = next
+
+	lw r4, r1, 0		# t2 = arr[i]
+
+	nand r1, r1, r1		#
+	addi r1, r1, 1		#
+	nand r1, r1, r1		#
+	lw r3, r1, 0		# t1 = arr[i - 1]
+
+	addi r1, r1, 2		# arr++
+
+	nand r2, r2, r2		#
+	addi r2, r2, 1		#
+	nand r2, r2, r2		# size--
+	beq r0, r0, loop	# }
 
 end:	beq r0, r0, end		# while(1) { }
