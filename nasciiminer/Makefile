@@ -1,7 +1,7 @@
 CC := g++
 CFLAGS := -Wall -std=c++2a -lncurses -pthread
-DEPS := engine.h
-OBJS := main.o engine.o
+DEPS := engine.h perlin.h
+OBJS := main.o engine.o perlin.o
 
 PROJ_NAME := main
 

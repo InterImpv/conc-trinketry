@@ -6,7 +6,7 @@
 int main(void)
 {
 	engine_t m_engine;
-	m_engine.map_generate(24);
+	m_engine.map_generate(80, 24, 64);
 
 	std::thread render_th(&engine_t::render_frame, &m_engine);
 	std::thread simulate_th(&engine_t::simulate_frame, &m_engine);

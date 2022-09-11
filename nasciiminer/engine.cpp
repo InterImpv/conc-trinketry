@@ -3,12 +3,29 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+
+#include <bits/stdc++.h>
+
+#include <iostream>
+#include <memory>
 #include <thread>
 #include <ncurses.h>
+#include <vector>
 
 #define TERMX_MIN 40
 #define TERMY_MIN 12
 static const char *TERMERR_SMALL = "Terminal too small!";
+
+static const uint64_t clamp_ui64(const uint64_t val, const uint64_t min, const uint64_t max)
+{
+	const uint64_t ret = (val < min) ? min : val;
+	return (ret > max) ? max : ret;
+}
+
+static const bool in_range(const double val, const double min, const double max)
+{
+	return (val >= min && val <= max) ? true : false;
+}
 
 /* POINT BEGIN */
 point32_t::point32_t(void)
@@ -38,30 +55,86 @@ engine_t::engine_t(void)
 	initscr();
 	noecho();
 	curs_set(0);
-	timeout(-1);
+	timeout(50);
 
 	this->key = '.';
+	this->currlayer = 1;
+	this->layers = 0;
+	this->perlin = PerlinNoise();
 }
 
-void engine_t::map_generate(uint64_t size)
+void engine_t::inc_layer(void)
 {
-	if (size > 576)
-		size = 576;
+	currlayer = clamp_ui64(++currlayer, 1, layers);
+}
 
-	for (uint64_t i = 0; i < size; i++) {
-		this->map.push_back(std::string(size, '#'));
+void engine_t::dec_layer(void)
+{
+	currlayer = clamp_ui64(--currlayer, 1, layers);
+}
+
+void engine_t::map_generate_layer(void)
+{
+	//double pf = 1;
+	double sf = 0.1;
+
+	std::vector<std::string> layer;
+	for (uint64_t y = 0; y < map_h; y++) {
+		std::string line;
+		for (uint64_t x = 0; x < map_w; x++) {
+			double pn = perlin.noise((double)(x * sf), (double)(y * sf), (double)(layers * sf));
+			char ch = ' ';
+
+			if (in_range(pn, 0.75, 1)) {
+				ch = ' ';
+			} else if (in_range(pn, 0.5, 0.75)) {
+				ch = '.';
+			} else if (in_range(pn, 0.25, 0.5)) {
+				ch = 'O';
+			} else {
+				ch = '@';
+			}
+			line.push_back(ch);
+		}
+		layer.push_back(line);
 	}
+	map.push_back(layer);
+	layers++;
+}
+
+void engine_t::map_generate_fill(const char ch)
+{
+	std::vector<std::string> layer;
+	for (uint64_t y = 0; y < map_h; y++) {
+		std::string line;
+		for (uint64_t x = 0; x < map_w; x++) {
+			line.push_back(ch);
+		}
+		layer.push_back(line);
+	}
+	map.push_back(layer);
+	layers++;
+}
+
+void engine_t::map_generate(const uint64_t w, const uint64_t h, const uint64_t z)
+{
+	this->map_w = clamp_ui64(w, 8, 80);
+	this->map_h = clamp_ui64(h, 4, 24);
+	this->map_z = clamp_ui64(z, 1, 64);
+
+	this->map_generate_fill('X');
+	for (uint64_t i = 0; i < this->map_z ; i++) {
+		this->map_generate_layer();
+	}
+	this->map_generate_fill('X');
 }
 
 void engine_t::render_map(void)
 {
-	uint64_t line = 1;
-	for (auto it : this->map) {
-		mvaddnstr(line, 0, it.c_str(), this->scrsize.x);
-
-		line++;
-		if (line > scrsize.y)
-			break;
+	for (uint64_t y = 0; y < map[currlayer - 1].size(); y++) {
+		for (uint64_t x = 0; x < map[currlayer - 1][y].size(); x++) {
+			mvaddch(y + 1, x, map[currlayer - 1][y][x]);
+		}
 	}
 }
 
@@ -74,32 +147,36 @@ void engine_t::render_frame(void)
 	while (this->key != 'q') {
 		getmaxyx(stdscr, scry, scrx);
 		this->scrsize = point32_t(scrx, scry);
-
 		/* temporary check*/
 		if (scrx < TERMX_MIN || scry < TERMY_MIN) {
 			clear();
 			mvprintw(scry / 2, scrx / 2 - std::strlen(TERMERR_SMALL) / 2, TERMERR_SMALL);
 			refresh();
-			std::this_thread::sleep_for(std::chrono::milliseconds(33));
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			continue;
 		}
-
 		/* draw loop BEGIN */
+		auto start = std::chrono::high_resolution_clock::now();
 		clear();
 		
-		mvprintw(0, 0, "k: 0x%08x %d", this->key, this->key);
 		this->render_map();
+
+		auto end = std::chrono::high_resolution_clock::now();
+		std::chrono::duration<double, std::milli> elapsed = end - start;
+		mvprintw(0, 0, "f: %.1f", 1 / elapsed.count());
+		mvprintw(0, 20, "k: 0x%08x %d", this->key, this->key);
+		mvprintw(0, 40, "cl: %d, ml: %d", this->currlayer, this->layers);
 
 		refresh();
 		/* draw loop END */
-		std::this_thread::sleep_for(std::chrono::milliseconds(33));
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
 	}
 }
 
 void engine_t::simulate_frame(void)
 {
 	while ((this->key = getch()) != 'q') {
-		// switch (key) {
+		switch (key) {
 		// case 'w':
 		// 	this->player_move_up();
 		// 	break;
@@ -112,13 +189,13 @@ void engine_t::simulate_frame(void)
 		// case 'd':
 		// 	this->player_move_right();
 		// 	break;
-		// case 'z':
-		// 	this->inc_degree_step();
-		// 	break;
-		// case 'x':
-		// 	this->dec_degree_step();
-		// 	break;
-		// }
+		case 'z':
+			this->dec_layer();
+			break;
+		case 'x':
+			this->inc_layer();
+			break;
+		}
 	}
 }
 /* ENGINE END */
