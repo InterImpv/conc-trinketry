@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -Wall -std=gnu2x -lncurses -lpthread
+CFLAGS := -Wall -std=gnu2x -lncurses
 
 DEPS := game.h
 OBJS := main.o game.o

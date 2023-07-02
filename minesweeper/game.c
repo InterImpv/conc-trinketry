@@ -203,7 +203,7 @@ void tm_change_tile(tilemap_t *map, const int x, const int y, const tile_t tile)
         map->t[y][x] = tile;
 }
 
-int32_t ms_total_flags(minesweeper_t *game)
+int ms_total_flags(minesweeper_t *game)
 {
     int ret = 0;
     if (!game)
@@ -217,7 +217,7 @@ int32_t ms_total_flags(minesweeper_t *game)
     return ret;
 }
 
-int32_t ms_total_mines(minesweeper_t *game)
+int ms_total_mines(minesweeper_t *game)
 {
     int ret = 0;
     if (!game)
@@ -341,10 +341,14 @@ void ms_reveal_at(minesweeper_t *game, const int x, const int y)
         return;
     } else if (tile == ZERO) {
         tm_change_tile(game->immap, x, y, EMPTY);
-        ms_reveal_at(game, x - 1, y);
-        ms_reveal_at(game, x, y - 1);
-        ms_reveal_at(game, x, y + 1);
-        ms_reveal_at(game, x + 1, y);
+        ms_reveal_at(game, x, y - 1);       // N
+        ms_reveal_at(game, x + 1, y - 1);   // NE
+        ms_reveal_at(game, x + 1, y);       // E
+        ms_reveal_at(game, x + 1, y + 1);   // SE
+        ms_reveal_at(game, x, y + 1);       // S
+        ms_reveal_at(game, x - 1, y + 1);   // SW
+        ms_reveal_at(game, x - 1, y);       // W
+        ms_reveal_at(game, x - 1, y - 1);   // NW
     }
 }
 
@@ -505,3 +509,60 @@ void ms_curs_d(minesweeper_t *game)
         game->curs_y++;
 }
 
+/* BASIC TIMER */
+void gt_reset(stimer_t *timer)
+{
+    if (!timer)
+        return;
+    
+    timer->start.tv_sec = 0;
+    timer->start.tv_usec = 0;
+    timer->curr.tv_sec = 0;
+    timer->curr.tv_usec = 0;
+    timer->delta = 0;
+    timer->secs = 0;
+    timer->mins = 0;
+    timer->is_paused = TRUE;
+}
+
+void gt_start(stimer_t *timer)
+{
+    if (timer->is_paused) {
+        timer->is_paused = FALSE;
+        gettimeofday(&timer->start, NULL);  // needed
+        gettimeofday(&timer->curr, NULL);   // do not care
+    }
+}
+
+void gt_stop(stimer_t *timer)
+{
+    timer->is_paused = TRUE;
+}
+
+static inline time_t gt_get_secs(stimer_t *timer)
+{
+    return (timer->delta % 60);
+}
+
+static inline time_t gt_get_mins(stimer_t *timer)
+{
+    return (timer->delta / 60);
+}
+
+void gt_advance(stimer_t *timer)
+{
+    if (timer->is_paused)
+        return;
+    /* do not bother if over 99 */
+    if (timer->mins > 99) {
+        timer->secs = 99;
+        timer->mins = 99;
+        return;
+    }
+    /* read current time & find delta */
+    gettimeofday(&timer->curr, NULL);
+    timer->delta = timer->curr.tv_sec - timer->start.tv_sec;
+    /* update displays */
+    timer->secs = gt_get_secs(timer);
+    timer->mins = gt_get_mins(timer);
+}

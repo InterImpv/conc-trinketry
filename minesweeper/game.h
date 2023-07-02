@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/time.h>
 
 typedef enum map_tile {
     ZERO = '0',     // white
@@ -44,10 +45,12 @@ typedef struct game_engine {
 } minesweeper_t;
 
 typedef struct game_timer {
-    uint32_t seconds;
-    uint32_t minutes;
+    struct timeval start;
+    struct timeval curr;
+    time_t delta;
+    time_t secs;
+    time_t mins;
     bool is_paused;
-    bool is_terminated;
 } stimer_t;
 
 /* alloc */
@@ -66,8 +69,8 @@ tile_t tm_get_tile(tilemap_t *map, const int x, const int y);
 int16_t tm_get_tile_color(const tile_t tile);
 void tm_change_tile(tilemap_t *map, const int x, const int y, const tile_t tile);
 
-int32_t ms_total_flags(minesweeper_t *game);
-int32_t ms_total_mines(minesweeper_t *game);
+int ms_total_flags(minesweeper_t *game);
+int ms_total_mines(minesweeper_t *game);
 
 /* map print */
 void ms_draw_remap(minesweeper_t *game, const int x, const int y);
@@ -91,3 +94,8 @@ void ms_curs_r(minesweeper_t *game);
 void ms_curs_u(minesweeper_t *game);
 void ms_curs_d(minesweeper_t *game);
 
+/* basic timer */
+void gt_reset(stimer_t *timer);
+void gt_start(stimer_t *timer);
+void gt_stop(stimer_t *timer);
+void gt_advance(stimer_t *timer);
