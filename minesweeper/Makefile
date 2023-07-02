@@ -1,22 +1,24 @@
-CC := g++
-CFLAGS := -Wall -std=c++2a -lncurses
+CC := gcc
+CFLAGS := -Wall -std=gnu2x -lncurses -lpthread
 
-PROJ_DEPS := game.h
-PROJ_OBJS := main.o game.o
+DEPS := game.h
+OBJS := main.o game.o
 
 PROJ_NAME := minesweep
 
-all: main
+all: build
 
-.PHONY: main clean
+.PHONY: build clean
 
-main: $(PROJ_NAME)
+build: $(PROJ_NAME)
 
-$(PROJ_NAME): $(PROJ_OBJS)
+$(PROJ_NAME): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
-
+	
+%.o: %.c $(DEPS)
+	$(CC) $(CFLAGS) -c $<
+	
 clean:
-	rm -f *.o
+	rm -f $(OBJS)
 	rm -f $(PROJ_NAME)
-
 

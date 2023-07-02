@@ -70,7 +70,7 @@ void ms_free(minesweeper_t *game)
 }
 
 /* INIT */
-const int ms_init(minesweeper_t *game, const uint32_t mine_count)
+int ms_init(minesweeper_t *game, const uint32_t mine_count)
 {
     if (!game)
         return -1;
@@ -148,7 +148,7 @@ void ms_maps_test(minesweeper_t *game)
 }
 
 /* MAP LOGIC */
-const bool tm_check_map(tilemap_t *map, const int x, const int y)
+bool tm_check_map(tilemap_t *map, const int x, const int y)
 {
     if ((x >= 0 && x <= (int)map->size - 1) &&
         (y >= 0 && y <= (int)map->size - 1)) {
@@ -157,34 +157,41 @@ const bool tm_check_map(tilemap_t *map, const int x, const int y)
     return FALSE;
 }
 
-const tile_t tm_get_tile(tilemap_t *map, const int x, const int y)
+tile_t tm_get_tile(tilemap_t *map, const int x, const int y)
 {
     if (tm_check_map(map, x, y))
         return map->t[y][x];
     return UNKNOWN;
 }
 
-const int32_t tm_get_tile_color(const tile_t tile)
+int16_t tm_get_tile_color(const tile_t tile)
 {
     switch(tile) {
-    case ONE:
-        return PAIR_BLUb;
-    case TWO:
-        return PAIR_GREb;
-    case SEVEN:
-    case THREE:
-        return PAIR_YELb;
-    case FOUR:
-        return PAIR_MAGb;
+    /* red */
     case FIVE:
     case SIX:
     case ERROR:
         return PAIR_REDb;
+    /* green */
+    case TWO:
+        return PAIR_GREb;
+    /* blue */
+    case ONE:
+        return PAIR_BLUb;
+    /* yellow */
+    case SEVEN:
+    case THREE:
+        return PAIR_YELb;
+    /* magenta */
+    case FOUR:
+        return PAIR_MAGb;
+    /* cyan */
     case EIGHT:
         return PAIR_CYAb;
+    /* black-on-green */
     case FLAGGED:
         return PAIR_bGRE;
-    
+
     default:
         return PAIR_DEF;
     }
@@ -196,33 +203,31 @@ void tm_change_tile(tilemap_t *map, const int x, const int y, const tile_t tile)
         map->t[y][x] = tile;
 }
 
-const int32_t ms_total_flags(minesweeper_t *game)
+int32_t ms_total_flags(minesweeper_t *game)
 {
     int ret = 0;
     if (!game)
         return ret;
 
-    for (size_t i = 0; i < game->size; i++) {
-        for (size_t j = 0; j < game->size; j++) {
+    for (size_t i = 0; i < game->size; i++)
+        for (size_t j = 0; j < game->size; j++)
             if (tm_get_tile(game->immap, j, i) == FLAGGED)
                 ret++;
-        }
-    }
+    
     return ret;
 }
 
-const int32_t ms_total_mines(minesweeper_t *game)
+int32_t ms_total_mines(minesweeper_t *game)
 {
     int ret = 0;
     if (!game)
         return ret;
 
-    for (size_t i = 0; i < game->size; i++) {
-        for (size_t j = 0; j < game->size; j++) {
+    for (size_t i = 0; i < game->size; i++)
+        for (size_t j = 0; j < game->size; j++)
             if (tm_get_tile(game->remap, j, i) == MINE)
                 ret++;
-        }
-    }
+    
     return ret;
 }
 
@@ -297,7 +302,7 @@ void ms_remap_show(minesweeper_t *game)
 }
 
 /* GAME LOGIC */
-const tile_t ms_inc_tile(minesweeper_t *game, const int x, const int y)
+tile_t ms_inc_tile(minesweeper_t *game, const int x, const int y)
 {
     if (!game)
         return ZERO;
@@ -471,12 +476,9 @@ void ms_check_win(minesweeper_t *game)
 }
 
 /* CURSOR FUNCTIONS */
-const bool ms_check_curs(minesweeper_t *game, const int x, const int y)
+inline bool ms_check_curs(minesweeper_t *game, const int x, const int y)
 {
-    if (x == game->curs_x && y == game->curs_y) {
-        return TRUE;
-    }
-    return FALSE;
+    return (x == game->curs_x && y == game->curs_y);
 }
 
 void ms_curs_l(minesweeper_t *game)

@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
+#include <pthread.h>
 #include <argp.h>
 #include <ncurses.h>
 
@@ -64,6 +66,30 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
     return 0;
 }
 
+/* timer mutex */
+static pthread_mutex_t timer_lock;
+/* very bad 1 sec timer */
+void *stimer_handler(void *arg)
+{
+    stimer_t *stimer = (stimer_t *)arg;
+
+    while (!stimer->is_terminated) {
+        if (!stimer->is_paused) {
+            pthread_mutex_lock(&timer_lock);
+            stimer->seconds++;
+
+            if (stimer->seconds >= 60) {
+                stimer->seconds = 0;
+                stimer->minutes++;
+            }
+            pthread_mutex_unlock(&timer_lock);
+        }
+        /* wait a bit */
+        sleep(1);
+    }
+    return NULL;
+}
+
 int main(int argc, char **argv)
 {
     struct argp argp = {
@@ -73,12 +99,34 @@ int main(int argc, char **argv)
     struct arguments game_vars = {
         0, 0, FALSE
     };
+
+    /* timer struct */
+    stimer_t stimer;
+    stimer.seconds = 0;
+    stimer.minutes = 0;
+    stimer.is_paused = TRUE;
+    stimer.is_terminated = FALSE;
+    /* timer thread */
+    pthread_t t_stimer;
+    int err = pthread_create(&t_stimer, NULL, &stimer_handler, (void *)&stimer);
+    if (err != 0) {
+        fprintf(stderr, "ERR: can not create timer thread %i\n", err);
+        return -1;
+    }
+    /* timer mutex */
+    if (pthread_mutex_init(&timer_lock, NULL) != 0) {
+        fprintf(stderr, "ERR: mutex init failed\n");
+        pthread_cancel(t_stimer);
+        return -1;
+    }
+    // pthread_detach(t_stimer);
         
     /* parse argv and set flags */
     argp_parse(&argp, argc, argv, 0, 0, &game_vars);
     /* init curses */
     initscr();
     noecho();
+    timeout(250);
     keypad(stdscr, TRUE);
     /* use pseudorandom */
     srand(time(NULL));
@@ -96,6 +144,8 @@ int main(int argc, char **argv)
 
     int key = '.';
     do {
+        if (!game->status == ONGOING)
+            continue;
         /* main loop */
         curs_set(0);
         clear();
@@ -115,20 +165,26 @@ int main(int argc, char **argv)
             break;
         case 'z':
             ms_poke(game);
+            stimer.is_paused = FALSE;
             break;
         case 'x':
             ms_flag(game);
+            stimer.is_paused = FALSE;
             break;
 
         default:
             break;
         }
+        /* read time */
+        pthread_mutex_lock(&timer_lock);
+        mvprintw(0, 0, "%02u:%02u", stimer.minutes, stimer.seconds);
+        pthread_mutex_unlock(&timer_lock);
         /* count mines */
         int mines_total = ms_total_mines(game);
         int mines_left =  mines_total - ms_total_flags(game);
-        mvprintw(0, 0, "m: %i / %i", mines_left, mines_total);
+        mvprintw(1, 0, "%i/%i", mines_left, mines_total);
         /* draw current map state */
-        ms_draw_immap(game, 0, 1);
+        ms_draw_immap(game, 0, 2);
 
         if (game_vars.is_debug) {
             /* print real map */
@@ -137,24 +193,31 @@ int main(int argc, char **argv)
             mvprintw(0, 2 * game->size + 2, "x: %i, y: %i", game->curs_x, game->curs_y);
             mvprintw(2, 2 * game->size + 2, "s: %u", game->status);
             mvprintw(3, 2 * game->size + 2, "c: %u", game->use_color);
+            mvprintw(4, 2 * game->size + 2, "k: 0x%08x %i", key, key);
         }
 
         /* move cursor to current position */
-        move(game->curs_y + 1, game->curs_x);
+        move(game->curs_y + 2, game->curs_x);
         /* check victory conditions */
         ms_check_win(game);
 
         if (game->status == LOSE) {
-            mvprintw(game->size + 1, 0, "You've lost!");
+            mvprintw(game->size + 2, 0, "You've lost!");
         } else if (game->status == WIN) {
-            mvprintw(game->size + 1, 0, "You've won!");
+            mvprintw(game->size + 2, 0, "You've won!");
         }
 
         /* redraw screen */
         curs_set(1);
         refresh();
-    } while ((key = getch()) != 'q' && game->status == ONGOING);
-    /* end */
+    } while ((key = getch()) != 'q');
+
+    /* end timer */
+    stimer.is_terminated = TRUE;
+    pthread_join(t_stimer, NULL);
+    pthread_cancel(t_stimer);
+    pthread_mutex_destroy(&timer_lock);
+    /* end game */
     endwin();
     ms_free(game);
 
