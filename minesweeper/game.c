@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 #include <ncurses.h>
 
@@ -56,6 +57,9 @@ minesweeper_t *ms_alloc(const size_t mapsize)
 
 void ms_free(minesweeper_t *game)
 {
+    if (!game)
+        return;
+
     for (size_t i = 0; i < game->size; i++)
         free(game->immap->t[i]);
     free(game->immap->t);
@@ -79,6 +83,8 @@ int ms_init(minesweeper_t *game, const uint32_t mine_count)
     game->mine_count = mine_count;
     game->curs_x = game->size / 2;
     game->curs_y = game->size / 2;
+    game->scr_start_x = 0;
+    game->scr_start_y = 0;
     game->status = ONGOING;
     game->is_first = TRUE;
     game->use_color = FALSE;
@@ -145,6 +151,54 @@ void ms_maps_test(minesweeper_t *game)
     game->remap->t[1][8] = MINE;
     game->remap->t[2][8] = MINE;
     game->remap->t[3][8] = MINE;
+}
+
+bool ms_check_screen_size(minesweeper_t *game)
+{
+    if (!game)
+        return FALSE;
+
+    int sx = 0, sy = 0;
+    int cx = 0, cy = 0;
+
+    const char *errstr = "Screen too small!";
+    const size_t errstrn = strlen(errstr);
+
+    while (sy <= game->size + 2 || sx < MIN_SCREEN_X) {
+        getmaxyx(stdscr, sy, sx);
+        cx = (sx - errstrn) / 2;
+        cy = sy / 2;
+
+        clear();
+        mvprintw(cy, cx, errstr);
+        refresh();
+    }
+    return TRUE;
+}
+
+void ms_recalc_screen(minesweeper_t *game)
+{
+    if (!game)
+        return;
+
+    int sx = 0, sy = 0;
+    getmaxyx(stdscr, sy, sx);
+
+    const int min = ((sx < MIN_SCREEN_X) ? MIN_SCREEN_X : game->size);
+
+    game->scr_start_x = (sx - min) / 2;
+    game->scr_start_y = (sy - game->size) / 2;
+}
+
+void ms_sprint_centerx(minesweeper_t *game, const int y, const char *str)
+{
+    if (!game || !str)
+        return;
+
+    const int cx = game->scr_start_x + (game->size - strlen(str)) / 2;
+    const int cy = game->scr_start_y + y;//game->size + 1;
+
+    mvprintw(cy, cx, str);
 }
 
 /* MAP LOGIC */
@@ -257,10 +311,18 @@ void ms_draw_remap(minesweeper_t *game, const int x, const int y)
                 tile_t tile = tm_get_tile(game->remap, j, i);
                 int color = tm_get_tile_color(tile);
                 /* draw color */
-                tm_draw_col(j + x, i + y, game->remap->t[i][j], color);
+                tm_draw_col(
+                    game->scr_start_x + j + x,
+                    game->scr_start_y + i + y,
+                    game->remap->t[i][j], color
+                );
             } else {
                 /* draw mono */
-                tm_draw_gen(j + x, i + y, game->remap->t[i][j]);
+                tm_draw_gen(
+                    game->scr_start_x + j + x,
+                    game->scr_start_y + i + y,
+                    game->remap->t[i][j]
+                );
             }
         }
     }
@@ -282,10 +344,19 @@ void ms_draw_immap(minesweeper_t *game, const int x, const int y)
                 if (tile == MINE && ms_check_curs(game, j, i))
                     color = PAIR_bRED;
                 /* draw color */
-                tm_draw_col(j + x, i + y, game->immap->t[i][j], color);
+                tm_draw_col(
+                    game->scr_start_x + j + x,
+                    game->scr_start_y + i + y,
+                    game->immap->t[i][j],
+                    color
+                );
             } else {
                 /* draw mono */
-                tm_draw_gen(j + x, i + y, game->immap->t[i][j]);
+                tm_draw_gen(
+                    game->scr_start_x + j + x,
+                    game->scr_start_y + i + y,
+                    game->immap->t[i][j]
+                );
             }
         }
     }

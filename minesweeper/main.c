@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <argp.h>
 #include <ncurses.h>
@@ -52,7 +53,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
         break;
         
     case ARGP_KEY_END:
-        if ((args->map_size == 0 || args->mine_count == 0) && args->is_debug == FALSE)
+        if ((args->map_size == 0 || args->mine_count == 0)
+            && args->is_debug == FALSE)
             argp_usage(state);
         break;
         
@@ -91,17 +93,32 @@ int main(int argc, char **argv)
     /* check game mode */
     if (game_vars.is_debug) {
         game = ms_alloc(10);
-        ms_init(game, game_vars.mine_count);
+        if (!game)
+            goto end_game;
         game->is_debug = TRUE;
     } else {
         game = ms_alloc(game_vars.map_size);
-        ms_init(game, game_vars.mine_count);
+        if (!game)
+            goto end_game;
     }
-
+    /* misc vars */
+        /* control key */
     int key = '.';
+        /* format string */
+    const char *fstr = "%02u:%02u %02u/%02u";
+    const size_t fstrn = strlen(fstr);
+    char *fbuf = malloc(fstrn);
+    /* alloc failcheck */
+    if (!fbuf)
+        goto end_buf;
+    /* loop */
+    ms_init(game, game_vars.mine_count);
     do {
         if (!game->status == ONGOING)
             continue;
+        /* check terminal size */
+        ms_check_screen_size(game);
+        ms_recalc_screen(game);
         /* main loop */
         curs_set(0);
         clear();
@@ -133,13 +150,18 @@ int main(int argc, char **argv)
         default:
             break;
         }
-        /* display time */
+        /* advance time */
         gt_advance(&stimer);
-        mvprintw(0, 0, "%02u:%02u", stimer.mins, stimer.secs);
         /* count mines */
         int mines_total = ms_total_mines(game);
         int mines_left =  mines_total - ms_total_flags(game);
-        mvprintw(0, 6, "%i/%i", mines_left, mines_total);
+        /* display info */
+        sprintf(
+            fbuf, fstr, 
+            stimer.mins, stimer.secs,
+            mines_left, mines_total
+        );
+        ms_sprint_centerx(game, 0, fbuf);
         /* draw current map state */
         ms_draw_immap(game, 0, 1);
 
@@ -147,31 +169,56 @@ int main(int argc, char **argv)
             /* print real map */
             ms_draw_remap(game, game->size + 1, 1);
             /* print debug information */
-            mvprintw(1, 2 * game->size + 2, "x: %i, y: %i", game->curs_x, game->curs_y);
-            mvprintw(2, 2 * game->size + 2, "k: 0x%08x %i", key, key);
-            mvprintw(3, 2 * game->size + 2, "s: %u", game->status);
-            mvprintw(4, 2 * game->size + 2, "f: %u", game->is_first);
-            mvprintw(5, 2 * game->size + 2, "c: %u", game->use_color);
+            mvprintw(
+                game->scr_start_y + 1,
+                game->scr_start_x + 2 * game->size + 2,
+                "x: %i, y: %i", game->curs_x, game->curs_y
+            );
+            mvprintw(
+                game->scr_start_y + 2,
+                game->scr_start_x + 2 * game->size + 2,
+                "k: 0x%08x %i", key, key
+            );
+            mvprintw(
+                game->scr_start_y + 3,
+                game->scr_start_x + 2 * game->size + 2,
+                "s: %u", game->status
+            );
+            mvprintw(
+                game->scr_start_y + 4,
+                game->scr_start_x + 2 * game->size + 2,
+                "f: %u", game->is_first
+            );
+            mvprintw(
+                game->scr_start_y + 5,
+                game->scr_start_x + 2 * game->size + 2,
+                "c: %u", game->use_color
+            );
         }
 
         /* move cursor to current position */
-        move(game->curs_y + 1, game->curs_x);
+        move(
+            game->scr_start_y + game->curs_y + 1,
+            game->scr_start_x + game->curs_x
+        );
         /* check victory conditions */
         ms_check_win(game);
 
         if (game->status == LOSE) {
-            mvprintw(game->size + 2, 0, "You've lost!");
+            ms_sprint_centerx(game, game->size + 1, "You've lost!");
             gt_stop(&stimer);
         } else if (game->status == WIN) {
-            mvprintw(game->size + 2, 0, "You've won!");
+            ms_sprint_centerx(game, game->size + 1, "You've won!");
             gt_stop(&stimer);
         }
-
         /* redraw screen */
         curs_set(1);
         refresh();
     } while ((key = getch()) != 'q');
 
+end_buf:
+    free(fbuf);
+end_game:
     /* end game */
     endwin();
     ms_free(game);

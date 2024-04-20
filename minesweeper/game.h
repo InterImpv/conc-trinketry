@@ -3,6 +3,8 @@
 #include <stdbool.h>
 #include <sys/time.h>
 
+#define MIN_SCREEN_X 10
+
 typedef enum map_tile {
     ZERO = '0',     // white
     ONE = '1',      // blue 
@@ -38,6 +40,8 @@ typedef struct game_engine {
     int mine_count;
     int curs_x;
     int curs_y;
+    int scr_start_x;
+    int scr_start_y;
     status_t status;
     bool is_debug;
     bool is_first;
@@ -62,6 +66,9 @@ void ms_free(minesweeper_t *game);
 int ms_init(minesweeper_t *game, const uint32_t mine_count);
 void ms_maps_zero(minesweeper_t *game);
 void ms_maps_test(minesweeper_t *game);
+bool ms_check_screen_size(minesweeper_t *game);
+void ms_recalc_screen(minesweeper_t *game);
+void ms_sprint_centerx(minesweeper_t *game, const int y, const char *str);
 
 /* map logic */
 bool tm_check_map(tilemap_t *map, const int x, const int y);
