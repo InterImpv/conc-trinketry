@@ -1,9 +1,11 @@
-CC := g++
-CFLAGS := -Wall -std=c++2a -lncurses -pthread
-DEPS := engine.h perlin.h
-OBJS := main.o engine.o perlin.o
+CC := gcc
+CFLAGS := -Wall -std=gnu2x
+LIBFLAGS := -lm -lncurses
 
-PROJ_NAME := main
+DEPS := error.h game.h utils.h vector.h rand.h perlin.h
+OBJS := main.o game.o utils.o vector.o rand.o perlin.o
+
+PROJ_NAME := demo1
 
 all: build
 
@@ -12,10 +14,12 @@ all: build
 build: $(PROJ_NAME)
 
 $(PROJ_NAME): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LIBFLAGS)
 	
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) -c $<
 	
 clean:
-	rm -f $(OBJS)	
+	rm -f $(OBJS)
+	rm -f $(PROJ_NAME)
+

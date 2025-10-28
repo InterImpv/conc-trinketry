@@ -1,5 +1,19 @@
+# https://github.com/github/gitignore/blob/master/C.gitignore
+
+# Project
+.vscode/
+example/
+demo1
+*.dat
+*.txt
+
+# Backups
+*.h.bak
+*.c.bak
+
 # Prerequisites
 *.d
+*.cyclo
 
 # Object files
 *.o
@@ -34,6 +48,7 @@
 *.app
 *.i*86
 *.x86_64
+*.bin
 *.hex
 
 # Debug files
@@ -50,3 +65,17 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# cscope with Vim
+cscope.*
+
+#ctags with Vim
+tags
+types_c.taghl
+
+#CtrlP
+ctrlp.root
+
+#html
+*.html
+*.list
